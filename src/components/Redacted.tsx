@@ -8,22 +8,23 @@ export default function Redacted({ text }: Props) {
       style={{
         position: "relative",
         display: "inline-block",
-        color: "#9caad6",
+        color: "#c8d4ff",
+        letterSpacing: "0.02em"
       }}
     >
       {text}
-
       <span
         style={{
           position: "absolute",
-          left: "30%",
+          left: "28%",
           right: "10%",
           top: "50%",
-          height: "60%",
-          background: "linear-gradient(90deg, #000, #111)",
+          height: "58%",
+          background: "linear-gradient(90deg, rgba(0,0,0,0.95), rgba(20,20,20,0.98))",
           transform: "translateY(-50%)",
           borderRadius: "4px",
-          opacity: 0.85,
+          opacity: 0.88,
+          pointerEvents: "none"
         }}
       />
     </span>
