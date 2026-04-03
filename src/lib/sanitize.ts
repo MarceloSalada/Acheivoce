@@ -1,6 +1,10 @@
 export function maskMiddle(value: string, visible = 2) {
   if (!value) return "";
 
+  if (value.length <= visible * 2) {
+    return value[0] + "██";
+  }
+
   const start = value.slice(0, visible);
   const end = value.slice(-visible);
 
@@ -11,7 +15,6 @@ export function maskEmail(email: string) {
   if (!email.includes("@")) return maskMiddle(email);
 
   const [name, domain] = email.split("@");
-
   return `${maskMiddle(name, 2)}@${domain}`;
 }
 
