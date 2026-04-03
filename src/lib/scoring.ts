@@ -12,22 +12,25 @@ export function calculateRiskScore(params: {
 
   if (breaches.length > 0) {
     score += Math.min(40, breaches.length * 10);
-    reasons.push(`Encontradas ${breaches.length} brechas.`);
+    reasons.push(`Foram encontradas ${breaches.length} ocorrências de brechas.`);
   }
 
   if (breaches.some((b) => b.hasPasswordExposure)) {
     score += 25;
-    reasons.push("Possível exposição de senha.");
+    reasons.push("Há indício de exposição de senha em ao menos uma brecha.");
+  }
+
+  if (profilesCount >= 3) {
+    score += 10;
+    reasons.push("O username possui presença pública em múltiplos serviços.");
   }
 
   if (exposure?.exposed) {
     score += 25;
-    reasons.push("Indício de infostealer.");
+    reasons.push("Há indício de comprometimento por infostealer.");
   }
 
-  if (profilesCount >= 5) {
-    score += 10;
-  }
+  score = Math.min(score, 100);
 
   let level: RiskScoreResult["level"] = "LOW";
   if (score >= 70) level = "HIGH";
