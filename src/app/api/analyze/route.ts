@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateRiskScore } from "../../../lib/scoring";
+import { searchBreachesByAccount } from "../../../lib/hibp";
 import type {
   BreachEntry,
   ExposureEntry,
@@ -41,7 +42,6 @@ function normalizeInput(body: RequestBody) {
   }
 
   const fallback = query || username || explicitValue || email;
-
   const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fallback);
 
   if (isEmail) {
@@ -62,147 +62,64 @@ function normalizeInput(body: RequestBody) {
 }
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json()) as RequestBody;
+  try {
+    const body = (await req.json()) as RequestBody;
+    const parsed = normalizeInput(body);
 
-  const parsed = normalizeInput(body);
+    if (!parsed.value) {
+      return NextResponse.json(
+        { error: "Nenhum valor de busca informado." },
+        { status: 400 }
+      );
+    }
 
-  if (!parsed.value) {
-    return NextResponse.json(
-      { error: "Nenhum valor de busca informado." },
-      { status: 400 }
-    );
+    let profiles: FoundProfile[] = [];
+    let breaches: BreachEntry[] = [];
+    let exposure: ExposureEntry | null = null;
+
+    if (parsed.type === "email") {
+      breaches = await searchBreachesByAccount(parsed.value);
+
+      profiles = [
+        {
+          site: "Email Correlation",
+          url: "https://haveibeenpwned.com/",
+          username: parsed.value.split("@")[0] || "user",
+          confidence: breaches.length > 0 ? 85 : 60,
+          email: parsed.value
+        }
+      ];
+    } else {
+      profiles = [
+        {
+          site: "Username Scan Pending",
+          url: `https://example.com/u/${parsed.value}`,
+          username: parsed.value,
+          confidence: 50
+        }
+      ];
+    }
+
+    const risk = calculateRiskScore({
+      breaches,
+      profilesCount: profiles.length,
+      exposure
+    });
+
+    return NextResponse.json({
+      username: parsed.type === "email" ? parsed.value.split("@")[0] : parsed.value,
+      queryType: parsed.type,
+      rawQuery: parsed.raw,
+      normalizedValue: parsed.value,
+      profiles,
+      breaches,
+      exposure,
+      risk
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Erro inesperado na análise.";
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const displayUsername =
-    parsed.type === "email"
-      ? parsed.value.split("@")[0] || "user"
-      : parsed.value;
-
-  const profiles: FoundProfile[] =
-    parsed.type === "username"
-      ? [
-          {
-            site: "GitHub",
-            url: `https://github.com/${parsed.value}`,
-            username: parsed.value,
-            confidence: 92,
-            email: `${displayUsername}@gmail.com`,
-            ip: "192.168.10.25"
-          },
-          {
-            site: "X",
-            url: `https://x.com/${parsed.value}`,
-            username: parsed.value,
-            confidence: 76,
-            email: `${displayUsername}@outlook.com`,
-            ip: "172.16.20.88"
-          },
-          {
-            site: "Instagram",
-            url: `https://instagram.com/${parsed.value}`,
-            username: parsed.value,
-            confidence: 68
-          }
-        ]
-      : [
-          {
-            site: "Email Correlation",
-            url: "https://example.com/email-correlation",
-            username: displayUsername,
-            confidence: 81,
-            email: parsed.value,
-            ip: "192.168.10.25"
-          },
-          {
-            site: "Account Recovery Hint",
-            url: "https://example.com/recovery-hint",
-            username: displayUsername,
-            confidence: 63,
-            email: parsed.value
-          }
-        ];
-
-  const breaches: BreachEntry[] =
-    parsed.type === "email"
-      ? [
-          {
-            name: "MailUsers Leak",
-            domain: "mailusers.net",
-            breachDate: "2024-10-03",
-            dataClasses: [
-              "Email addresses",
-              "IP addresses",
-              "Passwords",
-              "Usernames"
-            ],
-            hasPasswordExposure: true,
-            email: parsed.value,
-            ip: "192.168.10.25"
-          },
-          {
-            name: "RecoveryList Exposure",
-            domain: "recoverylist.org",
-            breachDate: "2023-05-14",
-            dataClasses: [
-              "Email addresses",
-              "Phone numbers",
-              "Usernames"
-            ],
-            hasPasswordExposure: false,
-            email: parsed.value
-          }
-        ]
-      : [
-          {
-            name: "MockForum Breach",
-            domain: "mockforum.com",
-            breachDate: "2024-11-18",
-            dataClasses: [
-              "Email addresses",
-              "IP addresses",
-              "Usernames",
-              "Passwords"
-            ],
-            hasPasswordExposure: true,
-            email: `${displayUsername}@gmail.com`,
-            ip: "192.168.10.25"
-          },
-          {
-            name: "ExampleData Leak",
-            domain: "exampledata.net",
-            breachDate: "2023-07-02",
-            dataClasses: [
-              "Email addresses",
-              "Usernames",
-              "Phone numbers"
-            ],
-            hasPasswordExposure: false,
-            email: `${displayUsername}@outlook.com`
-          }
-        ];
-
-  const exposure: ExposureEntry = {
-    exposed: true,
-    compromiseDate: "2025-01-11",
-    stealerFamily: "RedLine",
-    credentialCount: parsed.type === "email" ? 4 : 3,
-    ip: "10.0.0.14"
-  };
-
-  const risk = calculateRiskScore({
-    breaches,
-    profilesCount: profiles.length,
-    exposure
-  });
-
-  return NextResponse.json({
-    username: displayUsername,
-    queryType: parsed.type,
-    rawQuery: parsed.raw,
-    normalizedValue: parsed.value,
-    profiles,
-    breaches,
-    exposure,
-    risk
-  });
 }
