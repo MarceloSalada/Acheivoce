@@ -35,6 +35,9 @@ export interface RiskScoreResult {
 
 export interface AnalysisResult {
   username: string;
+  queryType?: "username" | "email";
+  rawQuery?: string;
+  normalizedValue?: string;
   profiles: FoundProfile[];
   breaches: BreachEntry[];
   exposure: ExposureEntry | null;
