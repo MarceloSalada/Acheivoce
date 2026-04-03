@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { calculateRiskScore } from "@/lib/scoring";
+import { calculateRiskScore } from "../../../lib/scoring";
 
 export async function POST(req: NextRequest) {
   const { username } = await req.json();
