@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Redacted from "@/components/Redacted";
-import { maskEmail, maskIP, maskMiddle } from "@/lib/sanitize";
+import Redacted from "../../components/Redacted";
+import { maskEmail, maskIP, maskMiddle } from "../../lib/sanitize";
+
+type QueryType = "username" | "email";
 
 type AnalysisResult = {
   username: string;
@@ -42,15 +44,31 @@ export default function ResultsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const username = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    const params = new URLSearchParams(window.location.search);
-    return params.get("username") || "";
+  const params = useMemo(() => {
+    if (typeof window === "undefined") {
+      return {
+        rawQuery: "",
+        type: "username" as QueryType,
+        value: ""
+      };
+    }
+
+    const search = new URLSearchParams(window.location.search);
+
+    const rawQuery = search.get("q") || "";
+    const type = (search.get("type") as QueryType) || "username";
+    const value = search.get("value") || "";
+
+    return {
+      rawQuery,
+      type: type === "email" ? "email" : "username",
+      value
+    };
   }, []);
 
   useEffect(() => {
-    if (!username) {
-      setError("Sem username informado.");
+    if (!params.value) {
+      setError("Nenhum valor de busca informado.");
       setLoading(false);
       return;
     }
@@ -60,22 +78,30 @@ export default function ResultsPage() {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ username })
+      body: JSON.stringify({
+        query: params.rawQuery,
+        type: params.type,
+        value: params.value,
+        username: params.type === "username" ? params.value : undefined,
+        email: params.type === "email" ? params.value : undefined
+      })
     })
       .then(async (res) => {
-        if (!res.ok) throw new Error("Falha na análise.");
+        if (!res.ok) {
+          throw new Error("Falha na análise.");
+        }
         return res.json();
       })
-      .then((json) => {
+      .then((json: AnalysisResult) => {
         setData(json);
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         setError(err.message || "Erro inesperado.");
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [username]);
+  }, [params]);
 
   const riskClass =
     data?.risk.level === "HIGH"
@@ -83,6 +109,13 @@ export default function ResultsPage() {
       : data?.risk.level === "MEDIUM"
       ? "risk-badge risk-medium"
       : "risk-badge risk-low";
+
+  const displayQuery =
+    params.type === "email"
+      ? params.value
+      : params.rawQuery.startsWith("@")
+      ? params.rawQuery
+      : `@${params.value}`;
 
   return (
     <main className="page-shell">
@@ -93,7 +126,7 @@ export default function ResultsPage() {
             Resultado<span className="title-accent">Analítico</span>
           </h1>
           <p className="subtitle">
-            Leitura ética de presença digital, exposição e risco para o username consultado.
+            Leitura ética de presença digital, exposição e risco para a entrada consultada.
           </p>
         </section>
 
@@ -117,10 +150,27 @@ export default function ResultsPage() {
             <section className="card">
               <div className="results-header">
                 <div>
-                  <p className="label">Username consultado</p>
+                  <p className="label">Entrada consultada</p>
                   <h2 className="section-title" style={{ marginBottom: 0 }}>
-                    <Redacted text={maskMiddle(data.username)} />
+                    {params.type === "email" ? (
+                      <Redacted text={maskEmail(displayQuery)} />
+                    ) : (
+                      <Redacted text={maskMiddle(displayQuery)} />
+                    )}
                   </h2>
+
+                  <p className="item-meta" style={{ marginTop: 8 }}>
+                    Tipo detectado: {params.type === "email" ? "Email" : "Username"}
+                  </p>
+
+                  <p className="item-meta">
+                    Valor normalizado:{" "}
+                    {params.type === "email" ? (
+                      <Redacted text={maskEmail(params.value)} />
+                    ) : (
+                      <Redacted text={maskMiddle(params.value)} />
+                    )}
+                  </p>
                 </div>
 
                 <div className="risk-box">
@@ -219,7 +269,7 @@ export default function ResultsPage() {
                         <ul className="reasons">
                           {breach.dataClasses.map((item) => (
                             <li key={item}>
-                              <Redacted text={item} />
+                              <Redacted text={maskMiddle(item, 3)} />
                             </li>
                           ))}
                         </ul>
@@ -276,4 +326,4 @@ export default function ResultsPage() {
       </div>
     </main>
   );
-        }
+      }
