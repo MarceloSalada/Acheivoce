@@ -5,6 +5,8 @@ export interface FoundProfile {
   url: string;
   username: string;
   confidence: number;
+  email?: string;
+  ip?: string;
 }
 
 export interface BreachEntry {
@@ -13,6 +15,8 @@ export interface BreachEntry {
   breachDate: string;
   dataClasses: string[];
   hasPasswordExposure: boolean;
+  email?: string;
+  ip?: string;
 }
 
 export interface ExposureEntry {
@@ -20,6 +24,7 @@ export interface ExposureEntry {
   compromiseDate: string | null;
   stealerFamily: string | null;
   credentialCount: number;
+  ip?: string;
 }
 
 export interface RiskScoreResult {
