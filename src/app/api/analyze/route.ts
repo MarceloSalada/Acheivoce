@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateRiskScore } from "../../../lib/scoring";
+import type { BreachEntry, ExposureEntry } from "../../../lib/types";
 
 export async function POST(req: NextRequest) {
   const { username } = await req.json();
@@ -8,8 +9,14 @@ export async function POST(req: NextRequest) {
     { site: "GitHub", url: `https://github.com/${username}`, username, confidence: 90 }
   ];
 
-  const breaches = [];
-  const exposure = { exposed: false, compromiseDate: null, stealerFamily: null, credentialCount: 0 };
+  const breaches: BreachEntry[] = [];
+
+  const exposure: ExposureEntry = {
+    exposed: false,
+    compromiseDate: null,
+    stealerFamily: null,
+    credentialCount: 0
+  };
 
   const risk = calculateRiskScore({
     breaches,
