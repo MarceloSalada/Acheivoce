@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Redacted from "@/components/Redacted";
+import { maskEmail, maskIP, maskMiddle } from "@/lib/sanitize";
 
 type AnalysisResult = {
   username: string;
@@ -9,6 +11,8 @@ type AnalysisResult = {
     url: string;
     username: string;
     confidence: number;
+    email?: string;
+    ip?: string;
   }[];
   breaches: {
     name: string;
@@ -16,12 +20,15 @@ type AnalysisResult = {
     breachDate: string;
     dataClasses: string[];
     hasPasswordExposure: boolean;
+    email?: string;
+    ip?: string;
   }[];
   exposure: {
     exposed: boolean;
     compromiseDate: string | null;
     stealerFamily: string | null;
     credentialCount: number;
+    ip?: string;
   } | null;
   risk: {
     score: number;
@@ -86,7 +93,7 @@ export default function ResultsPage() {
             Resultado<span className="title-accent">Analítico</span>
           </h1>
           <p className="subtitle">
-            Leitura inicial de presença digital e risco para o username consultado.
+            Leitura ética de presença digital, exposição e risco para o username consultado.
           </p>
         </section>
 
@@ -112,7 +119,7 @@ export default function ResultsPage() {
                 <div>
                   <p className="label">Username consultado</p>
                   <h2 className="section-title" style={{ marginBottom: 0 }}>
-                    {data.username}
+                    <Redacted text={maskMiddle(data.username)} />
                   </h2>
                 </div>
 
@@ -145,9 +152,30 @@ export default function ResultsPage() {
                   {data.profiles.map((profile) => (
                     <div className="item" key={`${profile.site}-${profile.url}`}>
                       <p className="item-title">{profile.site}</p>
-                      <a href={profile.url} target="_blank" rel="noreferrer">
-                        {profile.url}
-                      </a>
+
+                      <p className="item-meta">
+                        URL pública:{" "}
+                        <a href={profile.url} target="_blank" rel="noreferrer">
+                          {profile.url}
+                        </a>
+                      </p>
+
+                      <p className="item-meta">
+                        Username: <Redacted text={maskMiddle(profile.username)} />
+                      </p>
+
+                      {profile.email && (
+                        <p className="item-meta">
+                          Email: <Redacted text={maskEmail(profile.email)} />
+                        </p>
+                      )}
+
+                      {profile.ip && (
+                        <p className="item-meta">
+                          IP: <Redacted text={maskIP(profile.ip)} />
+                        </p>
+                      )}
+
                       <p className="item-meta">Confiança: {profile.confidence}%</p>
                     </div>
                   ))}
@@ -165,8 +193,41 @@ export default function ResultsPage() {
                   {data.breaches.map((breach) => (
                     <div className="item" key={`${breach.name}-${breach.breachDate}`}>
                       <p className="item-title">{breach.name}</p>
+
                       <p className="item-meta">Domínio: {breach.domain ?? "N/A"}</p>
                       <p className="item-meta">Data: {breach.breachDate}</p>
+
+                      {breach.email && (
+                        <p className="item-meta">
+                          Email associado: <Redacted text={maskEmail(breach.email)} />
+                        </p>
+                      )}
+
+                      {breach.ip && (
+                        <p className="item-meta">
+                          IP associado: <Redacted text={maskIP(breach.ip)} />
+                        </p>
+                      )}
+
+                      <div className="item-meta" style={{ marginTop: 10 }}>
+                        Dados expostos:
+                      </div>
+
+                      {breach.dataClasses.length === 0 ? (
+                        <p className="item-meta">Nenhum tipo informado.</p>
+                      ) : (
+                        <ul className="reasons">
+                          {breach.dataClasses.map((item) => (
+                            <li key={item}>
+                              <Redacted text={item} />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      <p className="item-meta">
+                        Senha exposta: {breach.hasPasswordExposure ? "Sim" : "Não"}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -186,11 +247,22 @@ export default function ResultsPage() {
                       Data do comprometimento: {data.exposure.compromiseDate ?? "N/A"}
                     </p>
                     <p className="item-meta">
-                      Família do stealer: {data.exposure.stealerFamily ?? "N/A"}
+                      Família do stealer:{" "}
+                      {data.exposure.stealerFamily ? (
+                        <Redacted text={maskMiddle(data.exposure.stealerFamily)} />
+                      ) : (
+                        "N/A"
+                      )}
                     </p>
                     <p className="item-meta">
                       Quantidade de credenciais: {data.exposure.credentialCount}
                     </p>
+
+                    {data.exposure.ip && (
+                      <p className="item-meta">
+                        IP relacionado: <Redacted text={maskIP(data.exposure.ip)} />
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -204,4 +276,4 @@ export default function ResultsPage() {
       </div>
     </main>
   );
-}
+        }
