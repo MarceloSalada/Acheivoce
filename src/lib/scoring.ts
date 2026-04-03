@@ -22,7 +22,7 @@ export function calculateRiskScore(params: {
 
   if (profilesCount >= 3) {
     score += 10;
-    reasons.push("O username possui presença pública em múltiplos serviços.");
+    reasons.push("Há presença pública em múltiplos serviços.");
   }
 
   if (exposure?.exposed) {
